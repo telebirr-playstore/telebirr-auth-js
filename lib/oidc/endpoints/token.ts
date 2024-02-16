@@ -15,6 +15,7 @@ import { AuthSdkError } from '../../errors';
 import { CustomUrls, OAuthParams, OAuthResponse, RefreshToken, TokenParams } from '../types';
 import { removeNils, toQueryString } from '../../util';
 import { httpRequest, OktaAuthHttpInterface } from '../../http';
+import { generateDPoPForTokenRequest } from '../dpop';
 
 function validateOptions(options: TokenParams) {
   // Quick validation
@@ -59,14 +60,22 @@ function getPostData(sdk, options: TokenParams): string {
   return toQueryString(params).slice(1);
 }
 
+// TODO: dpop nonce header? first request fails?
+
 // exchange authorization code for an access token
-export function postToTokenEndpoint(sdk, options: TokenParams, urls: CustomUrls): Promise<OAuthResponse> {
+export async function postToTokenEndpoint(sdk, options: TokenParams, urls: CustomUrls): Promise<OAuthResponse> {
   validateOptions(options);
   var data = getPostData(sdk, options);
 
-  const headers = {
+  const headers: any = {
     'Content-Type': 'application/x-www-form-urlencoded'
   };
+
+  if (options.dpop) {
+    // TODO: add dpop header
+    const proof = await generateDPoPForTokenRequest({ url: urls.tokenUrl! , method: 'POST' });
+    headers.DPoP = proof;
+  }
 
   return httpRequest(sdk, {
     url: urls.tokenUrl,
@@ -76,18 +85,25 @@ export function postToTokenEndpoint(sdk, options: TokenParams, urls: CustomUrls)
   });
 }
 
-export function postRefreshToken(
+export async function postRefreshToken(
   sdk: OktaAuthHttpInterface,
   options: TokenParams,
   refreshToken: RefreshToken
 ): Promise<OAuthResponse> {
+  const headers: any = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  if (options.dpop) {
+    // TODO: add dpop header
+    const proof = await generateDPoPForTokenRequest({ url: refreshToken.tokenUrl , method: 'POST' });
+    headers.DPoP = proof;
+  }
+
   return httpRequest(sdk, {
     url: refreshToken.tokenUrl,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-
+    headers,
     args: Object.entries({
       client_id: options.clientId, // eslint-disable-line camelcase
       grant_type: 'refresh_token', // eslint-disable-line camelcase
