@@ -36,6 +36,8 @@ import { createTransactionManager } from '../../../../lib/oidc/TransactionManage
 
 const TransactionManager = createTransactionManager();
 
+// TODO: test dpop error
+
 describe('prepareTokenParams', function() {
 
   it('throws an error if pkce is true and PKCE is not supported', function() {

@@ -81,6 +81,7 @@ export function createOAuthOptionsConstructor() {
     codeChallengeMethod: string;
     acrValues: string;
     maxAge: string | number;
+    dpop: boolean;
 
     // Additional options
     tokenManager: TokenManagerOptions;
@@ -126,6 +127,8 @@ export function createOAuthOptionsConstructor() {
       this.codeChallengeMethod = options.codeChallengeMethod;
       this.acrValues = options.acrValues;
       this.maxAge = options.maxAge;
+      // TODO: handle browsers without IndexedDB support
+      this.dpop = options.dpop === true ?  true : false; // dpop defaults to false
 
       this.tokenManager = options.tokenManager;
       this.postLogoutRedirectUri = options.postLogoutRedirectUri;

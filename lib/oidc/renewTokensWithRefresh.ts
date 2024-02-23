@@ -23,14 +23,14 @@ export async function renewTokensWithRefresh(
   tokenParams: TokenParams,
   refreshTokenObject: RefreshToken
 ): Promise<Tokens> {
-  const { clientId } = sdk.options;
+  const { clientId, dpop } = sdk.options;
   if (!clientId) {
     throw new AuthSdkError('A clientId must be specified in the OktaAuth constructor to renew tokens');
   }
 
   try {
     const renewTokenParams: TokenParams = Object.assign({}, tokenParams, {
-      clientId,
+      clientId, dpop: dpop || false
     });
     const tokenResponse = await postRefreshToken(sdk, renewTokenParams, refreshTokenObject);
     const urls = getOAuthUrls(sdk, tokenParams);

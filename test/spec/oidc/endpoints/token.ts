@@ -83,6 +83,8 @@ describe('token endpoint', function() {
     }
   });
 
+  // TODO: dpop tests
+
   describe('validateOptions', function() {
     var authClient;
     var oauthOptions;

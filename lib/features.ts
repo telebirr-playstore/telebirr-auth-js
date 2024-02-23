@@ -50,11 +50,15 @@ export function isPopupPostMessageSupported() {
   return false;
 }
 
-export function isTokenVerifySupported() {
+function isWebCryptoSubtleSupported () {
   return typeof webcrypto !== 'undefined'
     && webcrypto !== null
     && typeof webcrypto.subtle !== 'undefined'
     && typeof Uint8Array !== 'undefined';
+}
+
+export function isTokenVerifySupported() {
+  return isWebCryptoSubtleSupported();
 }
 
 export function hasTextEncoder() {
@@ -77,3 +81,7 @@ export function isLocalhost() {
   return isBrowser() && window.location.hostname === 'localhost';
 }
 
+// TODO: test this
+export function isDPoPSupported () {
+  return typeof window.indexedDB !== 'undefined' && isWebCryptoSubtleSupported();
+}

@@ -106,6 +106,7 @@ export interface OktaAuthOAuthOptions extends
   postLogoutRedirectUri?: string;
   maxClockSkew?: number;
   restoreOriginalUri?: (oktaAuth: OktaAuthOAuthInterface, originalUri?: string) => Promise<void>;
+  dpop?: boolean;
 
   transactionManager?: TransactionManagerOptions;
 

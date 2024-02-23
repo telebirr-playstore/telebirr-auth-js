@@ -45,6 +45,7 @@ import {
 import { REFRESH_TOKEN_STORAGE_KEY, TOKEN_STORAGE_NAME } from '../constants';
 import { EventEmitter } from '../base/types';
 import { StorageOptions, StorageProvider, StorageType } from '../storage/types';
+import { clearDPoPKeyPair } from './dpop';
 
 const DEFAULT_OPTIONS = {
   // TODO: remove in next major version - OKTA-473815
@@ -400,6 +401,11 @@ export class TokenManager implements TokenManagerInterface {
     delete tokenStorage[key];
     this.storage.setStorage(tokenStorage);
     this.emitSetStorageEvent();
+
+    if (this.sdk.options.dpop) {
+      // catch and emit error thrown by IndexedDB operation, but do not block execution flow
+      clearDPoPKeyPair().catch((err) => this.emitError(err));
+    }
   
     this.emitRemoved(key, removedToken);
   }
@@ -463,6 +469,11 @@ export class TokenManager implements TokenManagerInterface {
     this.clearExpireEventTimeoutAll();
     this.storage.clearStorage();
     this.emitSetStorageEvent();
+
+    if (this.sdk.options.dpop) {
+      // catch and emit error thrown by IndexedDB operation, but do not block execution flow
+      clearDPoPKeyPair().catch((err) => this.emitError(err));
+    }
 
     Object.keys(tokens).forEach(key => {
       this.emitRemoved(key, tokens[key]);

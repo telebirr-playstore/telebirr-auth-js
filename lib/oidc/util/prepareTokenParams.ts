@@ -92,5 +92,7 @@ export async function prepareTokenParams(
     return tokenParams;
   }
 
+  // TODO: throw if dpop not supported?
+
   return preparePKCE(sdk, tokenParams);
 }

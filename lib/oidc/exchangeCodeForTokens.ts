@@ -33,7 +33,8 @@ export function exchangeCodeForTokens(sdk: OktaAuthOAuthInterface, tokenParams: 
     scopes,
     ignoreSignature,
     state,
-    acrValues
+    acrValues,
+    dpop,
   } = tokenParams;
 
   var getTokenOptions = {
@@ -42,6 +43,7 @@ export function exchangeCodeForTokens(sdk: OktaAuthOAuthInterface, tokenParams: 
     authorizationCode,
     interactionCode,
     codeVerifier,
+    dpop,
   };
 
   return postToTokenEndpoint(sdk, getTokenOptions, urls)

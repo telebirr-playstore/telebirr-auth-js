@@ -31,6 +31,8 @@ import PKCE from '../util/pkce';
 import { createEndpoints, createTokenAPI } from '../factory/api';
 import { TokenManager } from '../TokenManager';
 import { getOAuthUrls, isLoginRedirect, hasResponseType } from '../util';
+import { generateDPoPProof, clearDPoPKeyPair, DPoPProofParams } from '../dpop';
+import { AuthSdkError } from '../../errors';
 
 import { OktaAuthSessionInterface } from '../../session/types';
 import { provideOriginalUri } from './node';
@@ -347,6 +349,21 @@ export function mixinOAuth
       }
     }
 
+    async generateDPoPProof (params: DPoPProofParams): Promise<string> {
+      if (!params?.accessToken) {
+        const { accessToken } = this.tokenManager.getTokensSync();
+        if (!accessToken) {
+          throw new AuthSdkError('AccessToken is required to generate a DPoP Proof');
+        }
+        params.accessToken = accessToken.accessToken;
+      }
+
+      return generateDPoPProof(params);
+    }
+
+    async clearDPoPKeyPair (): Promise<void> {
+      return clearDPoPKeyPair();
+    }
   };
 
 }

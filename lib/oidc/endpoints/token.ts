@@ -15,7 +15,14 @@ import { AuthSdkError } from '../../errors';
 import { CustomUrls, OAuthParams, OAuthResponse, RefreshToken, TokenParams } from '../types';
 import { removeNils, toQueryString } from '../../util';
 import { httpRequest, OktaAuthHttpInterface } from '../../http';
-import { generateDPoPForTokenRequest } from '../dpop';
+import { generateDPoPForTokenRequest, isDPoPNonceError } from '../dpop';
+
+interface TokenRequestParams {
+  url: string;
+  data: any;
+  dpop?: boolean;
+  nonce?: string;
+}
 
 function validateOptions(options: TokenParams) {
   // Quick validation
@@ -60,28 +67,44 @@ function getPostData(sdk, options: TokenParams): string {
   return toQueryString(params).slice(1);
 }
 
-// TODO: dpop nonce header? first request fails?
+async function makeTokenRequest (sdk, { url, data, dpop, nonce }: TokenRequestParams): Promise<OAuthResponse> {
+  const method = 'POST';
+  const headers: any = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  if (dpop || sdk.options.dpop) {
+    const proof = await generateDPoPForTokenRequest({ url, method, nonce });
+    headers.DPoP = proof;
+  }
+
+  try {
+    const resp = await httpRequest(sdk, {
+      url,
+      method,
+      args: data,
+      headers
+    });
+    return resp;
+  }
+  catch (err) {
+    if (isDPoPNonceError(err) && !nonce) {
+      const nonce = err.resp?.headers['dpop-nonce'];
+      return makeTokenRequest(sdk, { url, data, dpop, nonce });
+    }
+    throw err;
+  }
+}
 
 // exchange authorization code for an access token
 export async function postToTokenEndpoint(sdk, options: TokenParams, urls: CustomUrls): Promise<OAuthResponse> {
   validateOptions(options);
   var data = getPostData(sdk, options);
 
-  const headers: any = {
-    'Content-Type': 'application/x-www-form-urlencoded'
-  };
-
-  if (options.dpop) {
-    // TODO: add dpop header
-    const proof = await generateDPoPForTokenRequest({ url: urls.tokenUrl! , method: 'POST' });
-    headers.DPoP = proof;
-  }
-
-  return httpRequest(sdk, {
-    url: urls.tokenUrl,
-    method: 'POST',
-    args: data,
-    headers
+  return makeTokenRequest(sdk, {
+    url: urls.tokenUrl!,
+    data,
+    dpop: options.dpop
   });
 }
 
@@ -90,28 +113,19 @@ export async function postRefreshToken(
   options: TokenParams,
   refreshToken: RefreshToken
 ): Promise<OAuthResponse> {
-  const headers: any = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  };
+  const data = Object.entries({
+    client_id: options.clientId, // eslint-disable-line camelcase
+    grant_type: 'refresh_token', // eslint-disable-line camelcase
+    scope: refreshToken.scopes.join(' '),
+    refresh_token: refreshToken.refreshToken, // eslint-disable-line camelcase
+  }).map(function ([name, value]) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return name + '=' + encodeURIComponent(value!);
+  }).join('&');
 
-  if (options.dpop) {
-    // TODO: add dpop header
-    const proof = await generateDPoPForTokenRequest({ url: refreshToken.tokenUrl , method: 'POST' });
-    headers.DPoP = proof;
-  }
-
-  return httpRequest(sdk, {
+  return makeTokenRequest(sdk, {
     url: refreshToken.tokenUrl,
-    method: 'POST',
-    headers,
-    args: Object.entries({
-      client_id: options.clientId, // eslint-disable-line camelcase
-      grant_type: 'refresh_token', // eslint-disable-line camelcase
-      scope: refreshToken.scopes.join(' '),
-      refresh_token: refreshToken.refreshToken, // eslint-disable-line camelcase
-    }).map(function ([name, value]) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return name + '=' + encodeURIComponent(value!);
-    }).join('&'),
+    data,
+    dpop: options.dpop
   });
 }
