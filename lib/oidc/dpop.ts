@@ -1,5 +1,6 @@
 // References:
 // https://www.w3.org/TR/WebCryptoAPI/#concepts-key-storage
+// https://datatracker.ietf.org/doc/html/rfc9449
 
 import {
   webcrypto,
@@ -27,6 +28,11 @@ export interface DPoPProofParams {
 }
 
 type DPoPProofTokenRequestParams = Omit<DPoPProofParams, 'accessToken'>;
+// https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore#instance_methods
+// add additional methods as needed
+type StoreMethod = 'get' | 'put' | 'clear';
+
+const INDEXEDDB_NAME = 'OktaAuthJs';
 
 export function isDPoPNonceError(obj: any): obj is OAuthError {
   return (
@@ -36,13 +42,14 @@ export function isDPoPNonceError(obj: any): obj is OAuthError {
   );
 }
 
+// convenience abstraction for exposing IDBObjectStore instance
 function keyStore (onsuccess: (store: IDBObjectStore) => void,  onerror: (error: Error) => void) {
   const dbKey = 'DPoPKeys';
   // TODO: is this needed?
   // const indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
   const indexedDB = window.indexedDB;
 
-  const req = indexedDB.open('OktaAuthJs', 1);
+  const req = indexedDB.open(INDEXEDDB_NAME, 1);
 
   req.onerror = function () {
     // TODO: throw error
@@ -73,54 +80,43 @@ function keyStore (onsuccess: (store: IDBObjectStore) => void,  onerror: (error:
   };
 }
 
-function loadKeyPair (): Promise<CryptoKeyPair | null> {
+// convenience abstraction for wrapping IDBObjectStore methods in promises
+function invokeStoreMethod (method: StoreMethod, ...args: any[]): Promise<IDBRequest> {
   return new Promise((resolve, reject) => {
     keyStore(function (store) {
-      const req = store.get(1);
+      // https://github.com/microsoft/TypeScript/issues/49700
+      // https://github.com/microsoft/TypeScript/issues/49802
+      // @ts-expect-error ts(2556)
+      const req = store[method](...args);
       req.onsuccess = function () {
-        resolve(req.result?.keyPair || null);
+        resolve(req);
       };
       req.onerror = function () {
-        // TODO: throw error
         reject(req.error);
       };
     }, reject);
   });
 }
 
-function storeKeyPair (keyPair: CryptoKeyPair) {
-  return new Promise((resolve, reject) => {
-    keyStore(function (store) {
-      const req = store.put({id: 1, keyPair});
-      req.onsuccess = function () {
-        resolve(keyPair);
-      };
-      req.onerror = function () {
-        // TODO: throw error
-        reject(req.error);
-      };
-    }, reject);
-  });
+// NOTE: exporting for tests, but will not be exposed on sdk facade
+export async function loadKeyPair (): Promise<CryptoKeyPair | null> {
+  const req = await invokeStoreMethod('get', 1);
+  return req.result?.keyPair || null;
+}
+
+async function storeKeyPair (keyPair: CryptoKeyPair) {
+  await invokeStoreMethod('put', {id: 1, keyPair});
+  return keyPair;
 }
 
 // Exposed as public method, automatically called in tokenManager.remove and .clear
 export async function clearDPoPKeyPair (): Promise<void> {
-  return new Promise((resolve, reject) => {
-    keyStore(function (store) {
-      const req = store.clear();
-      req.onsuccess = function () {
-        resolve();
-      };
-      req.onerror = function () {
-        // TODO: throw error
-        reject(req.error);
-      };
-    }, reject);
-  });
+  await invokeStoreMethod('clear');
 }
 
 // load from storage or generate and store keyPair
-async function getDPoPKeyPair (): Promise<CryptoKeyPair> {
+// NOTE: exporting for tests, but will not be exposed on sdk facade
+export async function getDPoPKeyPair (): Promise<CryptoKeyPair> {
   let keyPair = await loadKeyPair();
   if (keyPair) {
     return keyPair;
@@ -155,6 +151,8 @@ export async function generateKeyPair (): Promise<CryptoKeyPair> {
 export function cryptoRandomValue () {
   return [...webcrypto.getRandomValues(new Uint8Array(32))].map(v => v.toString(16)).join('');
 }
+
+// TODO: indexeddb storage name should be configurable
 
 export async function generateDPoPProof ({ url, method, nonce, accessToken }: DPoPProofParams): Promise<string> {
   // loadKey

@@ -81,7 +81,9 @@ export function isLocalhost() {
   return isBrowser() && window.location.hostname === 'localhost';
 }
 
-// TODO: test this
+// For now, DPoP is only supported on browsers
 export function isDPoPSupported () {
-  return typeof window.indexedDB !== 'undefined' && isWebCryptoSubtleSupported();
+  return isBrowser() &&
+    typeof window.indexedDB !== 'undefined' &&
+    isWebCryptoSubtleSupported();
 }

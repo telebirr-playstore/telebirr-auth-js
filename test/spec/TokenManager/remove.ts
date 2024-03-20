@@ -2,8 +2,6 @@ import { TokenManager } from '../../../lib/oidc/TokenManager';
 
 const Emitter = require('tiny-emitter');
 
-// TODO: dpop tests
-
 describe('TokenManager remove', () => {
   let testContext;
 

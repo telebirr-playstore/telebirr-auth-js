@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 
 // TODO: spy httpRequest
 

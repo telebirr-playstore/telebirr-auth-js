@@ -87,12 +87,14 @@ export async function prepareTokenParams(
   const defaults = getDefaultTokenParams(sdk);
   tokenParams = { ...defaults, ...tokenParams };
 
+  if (tokenParams.dpop && !sdk.features.isDPoPSupported()) {
+    throw new AuthSdkError('DPoP has been configured, but is not supported by browser');
+  }
+
   if (tokenParams.pkce === false) {
     // Implicit flow or authorization_code without PKCE
     return tokenParams;
   }
-
-  // TODO: throw if dpop not supported?
 
   return preparePKCE(sdk, tokenParams);
 }

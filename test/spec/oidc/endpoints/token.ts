@@ -103,54 +103,60 @@ describe('token endpoint', function() {
       };
     });
 
-    it('Does not throw if options are valid', function() {
+    it('Does not throw if options are valid', async () => {
       var httpRequst = jest.spyOn(mocked.http, 'httpRequest').mockImplementation();
       var urls = {
         tokenUrl: 'http://superfake'
       };
-      postToTokenEndpoint(authClient, oauthOptions, urls);
+      await postToTokenEndpoint(authClient, oauthOptions, urls);
       expect(httpRequst).toHaveBeenCalled();
     });
 
-    it('Throws if no clientId', function() {
+    it('Throws if no clientId', async () => {
       oauthOptions.clientId = undefined;
       try {
-        postToTokenEndpoint(authClient, oauthOptions, undefined as unknown as CustomUrls);
+        await postToTokenEndpoint(authClient, oauthOptions, undefined as unknown as CustomUrls);
       } catch(e) {
         expect(e instanceof AuthSdkError).toBe(true);
         expect((e as Error).message).toBe('A clientId must be specified in the OktaAuth constructor to get a token');
       }
     });
 
-    it('Throws if no redirectUri', function() {
+    it('Throws if no redirectUri', async () => {
       oauthOptions.redirectUri = undefined;
       try {
-        postToTokenEndpoint(authClient, oauthOptions, undefined as unknown as CustomUrls);
+        await postToTokenEndpoint(authClient, oauthOptions, undefined as unknown as CustomUrls);
       } catch(e) {
         expect(e instanceof AuthSdkError).toBe(true);
         expect((e as Error).message).toBe('The redirectUri passed to /authorize must also be passed to /token');
       }
     });
 
-    it('Throws if no authorizationCode', function() {
+    it('Throws if no authorizationCode', async () => {
       oauthOptions.authorizationCode = undefined;
       try {
-        postToTokenEndpoint(authClient, oauthOptions, undefined as unknown as CustomUrls);
+        await postToTokenEndpoint(authClient, oauthOptions, undefined as unknown as CustomUrls);
       } catch(e) {
         expect(e instanceof AuthSdkError).toBe(true);
         expect((e as Error).message).toBe('An authorization code (returned from /authorize) must be passed to /token');
       }
     });
 
-    it('Throws if no codeVerifier', function() {
+    it('Throws if no codeVerifier', async () => {
       oauthOptions.codeVerifier = undefined;
       try {
-        postToTokenEndpoint(authClient, oauthOptions, undefined as unknown as CustomUrls);
+        await postToTokenEndpoint(authClient, oauthOptions, undefined as unknown as CustomUrls);
       } catch(e) {
         expect(e instanceof AuthSdkError).toBe(true);
         expect((e as Error).message).toBe('The "codeVerifier" (generated and saved by your app) must be passed to /token');
       }
     });
 
+  });
+
+  describe('dpop', () => {
+    it('TODO', () => {
+      expect(false).toBe(true); // TODO: implement tests
+    });
   });
 });
