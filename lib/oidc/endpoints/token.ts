@@ -17,14 +17,18 @@ import { removeNils, toQueryString } from '../../util';
 import { httpRequest, OktaAuthHttpInterface } from '../../http';
 import { generateDPoPForTokenRequest, isDPoPNonceError } from '../dpop';
 
+export interface TokenEndpointParams extends TokenParams {
+  dpopKeyPair?: CryptoKeyPair;
+}
+
 interface TokenRequestParams {
   url: string;
   data: any;
-  dpop?: boolean;
+  dpopKeyPair?: CryptoKeyPair;
   nonce?: string;
 }
 
-function validateOptions(options: TokenParams) {
+function validateOptions(options: TokenEndpointParams) {
   // Quick validation
   if (!options.clientId) {
     throw new AuthSdkError('A clientId must be specified in the OktaAuth constructor to get a token');
@@ -40,6 +44,10 @@ function validateOptions(options: TokenParams) {
 
   if (!options.codeVerifier) {
     throw new AuthSdkError('The "codeVerifier" (generated and saved by your app) must be passed to /token');
+  }
+
+  if (options.dpop && !options.dpopKeyPair) {
+    throw new AuthSdkError('DPoP is configured but no key pair was provided');
   }
 }
 
@@ -67,14 +75,14 @@ function getPostData(sdk, options: TokenParams): string {
   return toQueryString(params).slice(1);
 }
 
-async function makeTokenRequest (sdk, { url, data, dpop, nonce }: TokenRequestParams): Promise<OAuthResponse> {
+async function makeTokenRequest (sdk, { url, data, nonce, dpopKeyPair }: TokenRequestParams): Promise<OAuthResponse> {
   const method = 'POST';
   const headers: any = {
     'Content-Type': 'application/x-www-form-urlencoded',
   };
 
-  if (dpop || sdk.options.dpop) {
-    const proof = await generateDPoPForTokenRequest({ url, method, nonce });
+  if (sdk.options.dpop && dpopKeyPair) {
+    const proof = await generateDPoPForTokenRequest({ url, method, nonce, keyPair: dpopKeyPair });
     headers.DPoP = proof;
   }
 
@@ -90,27 +98,29 @@ async function makeTokenRequest (sdk, { url, data, dpop, nonce }: TokenRequestPa
   catch (err) {
     if (isDPoPNonceError(err) && !nonce) {
       const nonce = err.resp?.headers['dpop-nonce'];
-      return makeTokenRequest(sdk, { url, data, dpop, nonce });
+      return makeTokenRequest(sdk, { url, data, dpopKeyPair, nonce });
     }
     throw err;
   }
 }
 
 // exchange authorization code for an access token
-export async function postToTokenEndpoint(sdk, options: TokenParams, urls: CustomUrls): Promise<OAuthResponse> {
+export async function postToTokenEndpoint(sdk, options: TokenEndpointParams, urls: CustomUrls): Promise<OAuthResponse> {
   validateOptions(options);
   var data = getPostData(sdk, options);
 
-  return makeTokenRequest(sdk, {
+  const params: TokenRequestParams = {
     url: urls.tokenUrl!,
     data,
-    dpop: options.dpop
-  });
+    dpopKeyPair: options?.dpopKeyPair
+  };
+
+  return makeTokenRequest(sdk, params);
 }
 
 export async function postRefreshToken(
   sdk: OktaAuthHttpInterface,
-  options: TokenParams,
+  options: TokenEndpointParams,
   refreshToken: RefreshToken
 ): Promise<OAuthResponse> {
   const data = Object.entries({
@@ -123,9 +133,11 @@ export async function postRefreshToken(
     return name + '=' + encodeURIComponent(value!);
   }).join('&');
 
-  return makeTokenRequest(sdk, {
+  const params: TokenRequestParams = {
     url: refreshToken.tokenUrl,
     data,
-    dpop: options.dpop
-  });
+    dpopKeyPair: options?.dpopKeyPair
+  };
+
+  return makeTokenRequest(sdk, params);
 }

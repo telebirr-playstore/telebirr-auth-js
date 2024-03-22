@@ -102,6 +102,10 @@ export async function handleOAuthResponse(
       authorizeUrl: urls.authorizeUrl!,
       userinfoUrl: urls.userinfoUrl!
     };
+
+    if (tokenParams.dpopPairId) {
+      tokenDict.accessToken.dpopPairId = tokenParams.dpopPairId;
+    }
   }
 
   if (refreshToken) {
@@ -115,6 +119,10 @@ export async function handleOAuthResponse(
       authorizeUrl: urls.authorizeUrl!,
       issuer: urls.issuer!,
     };
+
+    if (tokenParams.dpopPairId) {
+      tokenDict.refreshToken.dpopPairId = tokenParams.dpopPairId;
+    }
   }
 
   if (idToken) {

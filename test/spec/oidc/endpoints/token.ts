@@ -158,5 +158,11 @@ describe('token endpoint', function() {
     it('TODO', () => {
       expect(false).toBe(true); // TODO: implement tests
     });
+
+    // postToTokenEndpoint happy path
+
+    // postToTokenEndpoint nonce error
+
+    // postToTokenEndpoint generateDPoPForTokenRequest error
   });
 });

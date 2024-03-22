@@ -45,7 +45,6 @@ import {
 import { REFRESH_TOKEN_STORAGE_KEY, TOKEN_STORAGE_NAME } from '../constants';
 import { EventEmitter } from '../base/types';
 import { StorageOptions, StorageProvider, StorageType } from '../storage/types';
-import { clearDPoPKeyPair } from './dpop';
 
 const DEFAULT_OPTIONS = {
   // TODO: remove in next major version - OKTA-473815
@@ -391,39 +390,17 @@ export class TokenManager implements TokenManagerInterface {
       }
     });
   }
-
+  
   remove(key) {
     // Clear any listener for this token
     this.clearExpireEventTimeout(key);
-
-    // used in if dpop condition, must be called before token removal
-    const accessKey = this.getStorageKeyByType('accessToken');
-    const refreshKey = this.getStorageKeyByType('refreshToken');
   
     var tokenStorage = this.storage.getStorage();
     var removedToken = tokenStorage[key];
     delete tokenStorage[key];
     this.storage.setStorage(tokenStorage);
     this.emitSetStorageEvent();
-
-    if (this.sdk.options.dpop) {
-      let shouldClearDPoPKP = false;
-
-      // removing access token, no refresh token present
-      if (key === accessKey && removedToken.tokenType === 'DPoP' && !tokenStorage[refreshKey]) {
-        shouldClearDPoPKP = true;
-      }
-      // removing refresh token, no access token present
-      else if (key === refreshKey && !tokenStorage[accessKey]) {
-        shouldClearDPoPKP = true;
-      }
-
-      if (shouldClearDPoPKP) {
-        // catch and emit error thrown by IndexedDB operation, but do not block execution flow
-        clearDPoPKeyPair().catch((err) => this.emitError(err));    // purposefully not awaited
-      }
-    }
-
+  
     this.emitRemoved(key, removedToken);
   }
   
@@ -486,11 +463,6 @@ export class TokenManager implements TokenManagerInterface {
     this.clearExpireEventTimeoutAll();
     this.storage.clearStorage();
     this.emitSetStorageEvent();
-
-    if (this.sdk.options.dpop && tokens?.accessToken?.tokenType === 'DPoP') {
-      // catch and emit error thrown by IndexedDB operation, but do not block execution flow
-      clearDPoPKeyPair().catch((err) => this.emitError(err));    // purposefully not awaited
-    }
 
     Object.keys(tokens).forEach(key => {
       this.emitRemoved(key, tokens[key]);

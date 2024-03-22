@@ -56,6 +56,7 @@ export interface TokenParams extends CustomUrls {
   // TODO: remove in the next major version
   popupTitle?: string;
   dpop?: boolean;
+  dpopPairId?: string;
 }
 
 export interface TokenManagerOptions {
