@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "react-app-rewired": "^2.1.8",
-    "webpack": "^4.46.0"
+    "webpack": "^4.0.0"
   },
   "scripts": {
     "start": "SKIP_PREFLIGHT_CHECK=true PORT=8080 react-app-rewired start",
